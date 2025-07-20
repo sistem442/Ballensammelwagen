@@ -24,7 +24,9 @@ setup(
         'console_scripts': [
             'yolo_detector_node = yolo_object_detection.yolo_detector_node:main',
             'motion_control_node = yolo_object_detection.motion_control_node:main',
-            'ultraschall_node = yolo_object_detection.ultraschall_node:main'
+            'ultraschall_node = yolo_object_detection.ultraschall_node:main',
+            'bale_approach_node = yolo_object_detection.bale_approach:main',
+            'shutdown_button_node = yolo_object_detection.shutdown_button:main'
         ],
     },
 )

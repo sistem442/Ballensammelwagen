@@ -6,6 +6,7 @@ import RPi.GPIO as GPIO
 import time
 import threading
 from rclpy.qos import QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
 
 TRIG = 23
 ECHO = 24
@@ -25,6 +26,12 @@ class UltraschallNode(Node):
         self.get_logger().info('Starte Mess-Thread für HC-SR04...')
         self.thread = threading.Thread(target=self.distance)
         self.thread.start()
+        self.shutdown_sub = self.create_subscription(String, 'system_shutdown', self.shutdown_callback, 10)
+
+    def shutdown_callback(self, msg):
+        if msg.data == "shutdown":
+            self.get_logger().info("🛑 Shutdown-Signal empfangen – Node wird sauber beendet")
+            rclpy.shutdown()
        
     def distance(self):
         while self.running and rclpy.ok():

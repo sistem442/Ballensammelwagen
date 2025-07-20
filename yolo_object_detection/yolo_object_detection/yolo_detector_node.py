@@ -9,6 +9,7 @@ from cv_bridge import CvBridge
 
 import cv2
 from ultralytics import YOLO
+from std_msgs.msg import String
 
 
 class YoloDetector(Node):
@@ -23,6 +24,12 @@ class YoloDetector(Node):
 
         self.image_pub = self.create_publisher(Image, '/annotated_image', 10)
         self.status_pub = self.create_publisher(Bool, '/approach_status', 10)
+        self.shutdown_sub = self.create_subscription(String, 'system_shutdown', self.shutdown_callback, 10)
+
+    def shutdown_callback(self, msg):
+        if msg.data == "shutdown":
+            self.get_logger().info("🛑 Shutdown-Signal empfangen – Node wird sauber beendet")
+            rclpy.shutdown()
 
     def image_callback(self, msg):
         try:
