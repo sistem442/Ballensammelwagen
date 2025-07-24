@@ -1,37 +1,43 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.logging import get_logger
 from rclpy.qos import QoSProfile, ReliabilityPolicy
-
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool, String
 from cv_bridge import CvBridge
-
 import cv2
 from ultralytics import YOLO
-
 
 class YoloDetector(Node):
     def __init__(self):
         super().__init__('yolo_detector')
-        self.logger = get_logger('yolo_detector')
-
+        self.shutting_down = False
         self.bridge = CvBridge()
         self.model = YOLO('/home/boris/turtlebot3_ws/src/yolo_model/best.pt')
 
-        image_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
-        self.image_sub = self.create_subscription(Image, '/image_raw', self.image_callback, image_qos)
+        qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
 
+        self.image_sub = self.create_subscription(Image, '/image_raw', self.image_callback, qos)
         self.image_pub = self.create_publisher(Image, '/annotated_image', 10)
         self.status_pub = self.create_publisher(Bool, '/approach_status', 10)
+        self.feedback_pub = self.create_publisher(String, 'shutdown_feedback', 10)
         self.shutdown_sub = self.create_subscription(String, 'system_shutdown', self.shutdown_callback, 10)
 
+        self.get_logger().info("🧠 YOLO Detector bereit")
+
     def shutdown_callback(self, msg):
-        if msg.data == "shutdown":
-            self.logger.info("🛑 Shutdown-Signal empfangen – Node wird sauber beendet")
-            rclpy.shutdown()
+        if msg.data == "shutdown" and not self.shutting_down:
+            self.shutting_down = True
+            self.get_logger().info("🛑 Shutdown-Signal empfangen – räume auf")
+
+            # Rückmeldung senden
+            confirm = String()
+            confirm.data = 'yolo_detector'
+            self.feedback_pub.publish(confirm)
 
     def image_callback(self, msg):
+        if self.shutting_down or not rclpy.ok():
+            return
+
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
             results = self.model(cv_image, verbose=False)[0]
@@ -51,7 +57,7 @@ class YoloDetector(Node):
                     cv2.putText(cv_image, f"{label} ({conf:.2f})", (x1, y1 - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-                    self.logger.info(
+                    self.get_logger().info(
                         f"🎯 Ballen erkannt – Höhe: {box_height}px – approaching={approaching}",
                         throttle_duration_sec=5.0
                     )
@@ -65,19 +71,16 @@ class YoloDetector(Node):
             self.image_pub.publish(img_out)
 
         except Exception as e:
-            self.logger.error(f"YOLO-Fehler: {e}")
-
+            self.get_logger().error(f"⚠️ YOLO-Fehler: {e}")
 
 def main(args=None):
     rclpy.init(args=args)
     node = YoloDetector()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
-        node.logger.info("🛑 Abbruch erkannt – Node wird beendet")
+    finally:
         node.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
