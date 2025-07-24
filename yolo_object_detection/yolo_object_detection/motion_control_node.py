@@ -1,18 +1,16 @@
-# motion_control_node.py
 import rclpy
 from rclpy.node import Node
-from rclpy.duration import Duration
+from rclpy.logging import get_logger
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, String
 from geometry_msgs.msg import Twist
-from yolo_object_detection.bale_approach import BaleApproach
-from std_msgs.msg import String
-
 
 class MotionControl(Node):
     def __init__(self):
         super().__init__('motion_control')
+
+        self.logger = get_logger('motion_control')
 
         ultra_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self.ultra_sub = self.create_subscription(Float32, '/distance_ultra', self.ultrasonic_callback, ultra_qos)
@@ -35,37 +33,51 @@ class MotionControl(Node):
 
     def shutdown_callback(self, msg):
         if msg.data == "shutdown":
-            self.get_logger().info("🛑 Shutdown-Signal empfangen – Node wird sauber beendet")
+            self.logger.info("🛑 Shutdown-Signal empfangen – Node wird sauber beendet")
             rclpy.shutdown()
 
     def ultrasonic_callback(self, msg):
         distance = msg.data
         self.ultra_too_close = distance < 0.3
         if self.ultra_too_close:
-            self.get_logger().info(f"🛑 Ultraschall: {distance:.2f}m – Stop!")
+            self.logger.info(
+                f"🛑 Ultraschall: {distance:.2f}m – Stop!",
+                throttle_duration_sec=5.0
+            )
             self.approaching = False
         else:
-            self.get_logger().info(f"📏 Ultraschall: {distance:.2f}m – Weiterfahren möglich")
+            self.logger.info(
+                f"📏 Ultraschall: {distance:.2f}m – Weiterfahren möglich",
+                throttle_duration_sec=5.0
+            )
 
     def yolo_callback(self, msg):
         self.approaching = msg.data
         status = "aktiviert" if msg.data else "deaktiviert"
-        self.get_logger().info(f"🧠 YOLO Approaching: {status}")
+        self.logger.info(
+            f"🧠 YOLO Approaching: {status}",
+            throttle_duration_sec=5.0
+        )
 
     def send_last_twist(self):
         if self.approaching and not self.ultra_too_close:
             self.last_twist.linear.x = 0.05
             self.cmd_pub.publish(self.last_twist)
-            self.get_logger().info("🚀 Fahre vorwärts…")
+            self.logger.info("🚀 Fahre vorwärts…", throttle_duration_sec=5.0)
         elif self.approaching and self.ultra_too_close:
             msg = String()
             msg.data = "ballen_erkannt"
             self.ballen_status.publish(msg)
-            self.get_logger().info("📢 Ballen erkannt und in Nähe – Nachricht veröffentlicht")
+            self.logger.info(
+                "📢 Ballen erkannt und in Nähe – Nachricht veröffentlicht",
+                throttle_duration_sec=5.0
+            )
         else:
             self.cmd_pub.publish(Twist())
-            self.get_logger().info("🛑 Kein Befehl – Sicherheit oder kein Ballen")
-
+            self.logger.info(
+                "🛑 Kein Befehl – Sicherheit oder kein Ballen",
+                throttle_duration_sec=5.0
+            )
 
 def main(args=None):
     rclpy.init(args=args)
@@ -73,12 +85,11 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info("Abbruch erkannt – Node wird beendet.")
+        node.logger.info("Abbruch erkannt – Node wird beendet.")
     finally:
-        if rclpy.ok():  # Nur wenn ROS-Kontext noch aktiv ist
+        if rclpy.ok():
             node.destroy_node()
             rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
