@@ -26,7 +26,8 @@ setup(
             'motion_control_node = yolo_object_detection.motion_control_node:main',
             'ultraschall_node = yolo_object_detection.ultraschall_node:main',
             'bale_approach_node = yolo_object_detection.bale_approach:main',
-            'shutdown_button_node = yolo_object_detection.shutdown_button:main'
+            'shutdown_button_node = yolo_object_detection.shutdown_button:main',
+            'message_aggregator = yolo_object_detection.message_aggregator:main'
         ],
     },
 )

@@ -17,8 +17,9 @@ class MotionControl(Node):
         # Publisher
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', qos)
-        self.status_pub = self.create_publisher(String, '/ballen_status', qos)
+        self.approach_pub = self.create_publisher(Bool, '/ballen_approach', qos)
         self.feedback_pub = self.create_publisher(String, 'shutdown_feedback', 10)
+        self.status_pub = self.create_publisher(String, 'status', 10)
 
         # Subscriber
         self.create_subscription(Float32, '/distance_ultra', self.ultrasonic_callback, qos)
@@ -49,7 +50,7 @@ class MotionControl(Node):
         if self.shutting_down:
             return
         distance = msg.data
-        self.ultra_too_close = distance < 0.3
+        self.ultra_too_close = distance < 0.2
         if self.ultra_too_close:
             self.approaching = False
 
@@ -63,16 +64,23 @@ class MotionControl(Node):
             return
 
         twist = Twist()
+        msg = String()
 
         if self.approaching and not self.ultra_too_close:
             twist.linear.x = 0.05
             self.cmd_pub.publish(twist)
+            msg.data = 'Motion Control Node: Fahren zu dem Ballen'
+            self.status_pub.publish(msg)
         elif self.approaching and self.ultra_too_close:
-            status_msg = String()
-            status_msg.data = "ballen_erkannt"
-            self.status_pub.publish(status_msg)
+            status_msg = Bool()
+            status_msg.data = True
+            self.approach_pub.publish(status_msg)
+            msg.data = 'Motion Control Node: Fahren links von dem Ballen'
+            self.status_pub.publish(msg)
         else:
             self.cmd_pub.publish(twist)  # Stop-Befehl
+            msg.data = 'Motion Control Node: Stoppen'
+            self.status_pub.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

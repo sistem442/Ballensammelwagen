@@ -40,6 +40,13 @@ def generate_launch_description():
         ),
 
         Node(
+            package='yolo_object_detection',
+            executable='message_aggregator',
+            name='message_aggregator',
+            output='screen'
+        ),
+
+        Node(
            package='yolo_object_detection',
            executable='ultraschall_node',
            name='ultraschall_node',
