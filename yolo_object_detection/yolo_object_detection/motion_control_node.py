@@ -14,6 +14,8 @@ class MotionControl(Node):
         self.approaching = False
         self.ultra_too_close = False
         self.shutting_down = False
+        self.approaching_maneuver_started = False
+        self.status_msg = Bool()
 
         # Publisher
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
@@ -66,24 +68,23 @@ class MotionControl(Node):
 
         twist = Twist()
         msg = CustomStatus()
+        msg.node_name = "motion_control"
 
-        if self.approaching and not self.ultra_too_close:
+        if self.approaching and not self.ultra_too_close and not self.approaching_maneuver_started:
             twist.linear.x = 0.05
             self.cmd_pub.publish(twist)
             msg.data = 'Motion Control Node: Fahren zu dem Ballen'
             self.status_pub.publish(msg)
-        elif self.approaching and self.ultra_too_close:
-            status_msg = Bool()
-            status_msg.data = True
-            self.approach_pub.publish(status_msg)
-            msg = CustomStatus()
-            msg.node_name = "motion_control"
+        elif self.approaching and self.ultra_too_close and not self.approaching_maneuver_started:
+            self.status_msg.data = True
+            self.approach_pub.publish(self.status_msg)
             msg.data = "Fahren links von dem Ballen"
             self.status_pub.publish(msg)
-        else:
+            self.approaching_maneuver_started = True
+            self.control_timer.cancel()
+
+        elif not self.approaching_maneuver_started:
             self.cmd_pub.publish(twist)  # Stop-Befehl
-            msg = CustomStatus()
-            msg.node_name = "motion_control"
             msg.data = 'Stoppen'
             self.status_pub.publish(msg)
 
