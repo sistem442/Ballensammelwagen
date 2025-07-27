@@ -1,0 +1,18 @@
+<package format="3">
+  <name>messages</name>
+  <version>0.0.1</version>
+  <description>YOLO Message Definitions</description>
+  <maintainer email="boris@todo.todo">Boris</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rosidl_default_generators</depend>
+  <depend>rosidl_default_runtime</depend>
+  <depend>std_msgs</depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

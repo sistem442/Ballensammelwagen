@@ -3,6 +3,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Float32, Bool, String
 from geometry_msgs.msg import Twist
+from messages.msg import CustomStatus
 
 class MotionControl(Node):
     def __init__(self):
@@ -19,7 +20,7 @@ class MotionControl(Node):
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', qos)
         self.approach_pub = self.create_publisher(Bool, '/ballen_approach', qos)
         self.feedback_pub = self.create_publisher(String, 'shutdown_feedback', 10)
-        self.status_pub = self.create_publisher(String, 'status', 10)
+        self.status_pub = self.create_publisher(CustomStatus, 'status', 10)
 
         # Subscriber
         self.create_subscription(Float32, '/distance_ultra', self.ultrasonic_callback, qos)
@@ -64,7 +65,7 @@ class MotionControl(Node):
             return
 
         twist = Twist()
-        msg = String()
+        msg = CustomStatus()
 
         if self.approaching and not self.ultra_too_close:
             twist.linear.x = 0.05
@@ -75,11 +76,15 @@ class MotionControl(Node):
             status_msg = Bool()
             status_msg.data = True
             self.approach_pub.publish(status_msg)
-            msg.data = 'Motion Control Node: Fahren links von dem Ballen'
+            msg = CustomStatus()
+            msg.node_name = "motion_control"
+            msg.data = "Fahren links von dem Ballen"
             self.status_pub.publish(msg)
         else:
             self.cmd_pub.publish(twist)  # Stop-Befehl
-            msg.data = 'Motion Control Node: Stoppen'
+            msg = CustomStatus()
+            msg.node_name = "motion_control"
+            msg.data = 'Stoppen'
             self.status_pub.publish(msg)
 
 def main(args=None):

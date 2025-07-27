@@ -3,6 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
+from messages.msg import CustomStatus
 
 class BaleApproach(Node):
     def __init__(self):
@@ -24,10 +25,10 @@ class BaleApproach(Node):
         # Subscribers
         self.subscription = self.create_subscription(Bool, 'ballen_approach', self.listener_callback, 10)
         self.shutdown_sub = self.create_subscription(String, 'system_shutdown', self.shutdown_callback, 10)
-        # Publischers
+        # Publishers
         self.cmd_pub = self.create_publisher(Twist, 'cmd_vel', 10)
         self.feedback_pub = self.create_publisher(String, 'shutdown_feedback', 10)
-        self.status_pub = self.create_publisher(String, 'status', 10)
+        self.status_pub = self.create_publisher(CustomStatus, 'status', 10)
 
     def shutdown_callback(self, msg):
         if msg.data == "shutdown" and not self.shutting_down:
@@ -53,7 +54,8 @@ class BaleApproach(Node):
             return
 
         if self.step_index >= len(self.movement_sequence):
-            msg = String()
+            msg = CustomStatus()
+            msg.node_name = "bale_approach"
             msg.data = 'Bale Approach Node: Anfahrt fertig'
             self.status_pub.publish(msg)
             self.cmd_pub.publish(Twist())
